@@ -1,0 +1,9 @@
+{
+  "name": "tiktok-url-sanitizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RoKu's TikTok URL Sanitizer - Netlify-hosted TikTok link cleaner (self-hosted clone of cleantok.watch)",
+  "scripts": {
+    "test": "node test_clean.js"
+  }
+}

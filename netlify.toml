@@ -1,0 +1,11 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Frontend calls /api/clean; route that to the serverless function so
+# the JS doesn't need to know Netlify's internal function path.
+[[redirects]]
+  from = "/api/clean"
+  to = "/.netlify/functions/clean"
+  status = 200
+  force = true
