@@ -14,10 +14,15 @@ fetched.
 
 ```
 tiktok-sanitizer-netlify/
+
 ├── netlify.toml               # publish dir + function dir + /api/clean redirect
+
 ├── package.json
+
 ├── public/index.html          # frontend (same UI as the Flask version)
+
 ├── netlify/functions/clean.js # serverless function (port of sanitizer.py)
+
 └── test_clean.js              # local test suite, no CLI required
 ```
 
