@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RoKu's TikTok URL Sanitizer</title>
+<meta name="referrer" content="no-referrer" />
+<title>RoKu's URL Sanitizer</title>
 <style>
   :root {
     --bg: #0b0b0d;
     --panel: #16161a;
+    --field: #0f0f12;
     --border: #2a2a30;
     --text: #f2f2f3;
     --muted: #8b8b93;
     --accent: #25f4ee;
     --accent2: #fe2c55;
+    --youtube: #ff4e45;
     --error: #ff6b6b;
   }
   * { box-sizing: border-box; }
@@ -25,7 +28,7 @@
     background: radial-gradient(circle at 50% 0%, #1a1a1f 0%, var(--bg) 60%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 24px;
+    padding: 24px 16px;
   }
   .card {
     width: 100%;
@@ -47,6 +50,7 @@
     width: 10px; height: 10px; border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     display: inline-block;
+    flex: none;
   }
   p.sub {
     color: var(--muted);
@@ -57,7 +61,8 @@
   form { display: flex; gap: 8px; }
   input[type="text"] {
     flex: 1;
-    background: #0f0f12;
+    min-width: 0;
+    background: var(--field);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 12px 14px;
@@ -78,12 +83,13 @@
   }
   button:disabled { opacity: 0.5; cursor: default; }
   button:hover:not(:disabled) { opacity: 0.9; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .result {
     margin-top: 20px;
     padding: 16px;
     border-radius: 10px;
-    background: #0f0f12;
+    background: var(--field);
     border: 1px solid var(--border);
     display: none;
   }
@@ -100,8 +106,10 @@
     font-size: 14px;
     word-break: break-all;
     color: var(--accent);
+    text-decoration: none;
   }
-  .error-text { color: var(--error); font-size: 14px; }
+  a.clean-url:hover { text-decoration: underline; }
+  .error-text { color: var(--error); font-size: 14px; word-break: normal; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .copy-btn {
     background: transparent;
@@ -112,58 +120,94 @@
     border-radius: 8px;
     white-space: nowrap;
   }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .badges:empty { display: none; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+  .badge .swatch { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .badge.youtube .swatch { background: var(--youtube); }
+  .badge.tiktok .swatch { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  .badge code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
+  .notes {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .notes:empty { display: none; }
+  .notes li::before { content: "\2713"; color: var(--accent); margin-right: 6px; }
   .footnote {
     margin-top: 18px;
     font-size: 12px;
     color: var(--muted);
     line-height: 1.5;
   }
-  .badge {
-    display: inline-block;
-    font-size: 11px;
-    color: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 2px 8px;
-    margin-top: 8px;
+  .footnote p { margin: 0 0 6px; }
+  .footnote p:last-child { margin-bottom: 0; }
+  .footnote strong { color: var(--text); font-weight: 600; }
+  @media (max-width: 480px) {
+    .card { padding: 24px 18px; }
+    form { flex-direction: column; }
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1><span class="dot"></span>RoKu's TikTok URL Sanitizer</h1>
+  <main class="card">
+    <h1><span class="dot"></span>RoKu's URL Sanitizer</h1>
     <p class="sub">
-      Paste a TikTok share link (including short links like vm.tiktok.com or
-      vt.tiktok.com). We resolve it to its canonical URL and strip every
-      tracking parameter &mdash; nothing is downloaded, logged, or stored.
+      Paste a TikTok or YouTube link. You get back a plain link with the
+      tracking removed, including the share IDs that tell the app who sent
+      it. Nothing is downloaded, logged, or stored.
     </p>
     <form id="clean-form">
       <input
         id="url-input"
         type="text"
-        placeholder="https://vm.tiktok.com/ZMxxxxxxx/"
+        inputmode="url"
+        placeholder="Paste a TikTok or YouTube link"
+        aria-label="TikTok or YouTube link"
         autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="go"
         required
       />
       <button type="submit" id="submit-btn">Clean it</button>
     </form>
 
-    <div class="result" id="result">
+    <div class="result" id="result" aria-live="polite">
       <div class="label" id="result-label">Clean link</div>
       <div class="row">
-        <div class="clean-url" id="result-text"></div>
+        <a class="clean-url" id="result-text" target="_blank" rel="noopener noreferrer"></a>
         <button class="copy-btn" id="copy-btn" type="button">Copy</button>
       </div>
-      <div class="badge" id="badge" style="display:none;"></div>
+      <div class="badges" id="badges"></div>
+      <ul class="notes" id="notes"></ul>
     </div>
 
     <div class="footnote">
-      Works with full share links (www.tiktok.com/@user/video/…) and short
-      links (vm.tiktok.com/…, vt.tiktok.com/…, tiktok.com/t/…). Short links
-      are expanded by following the redirect only &mdash; the video itself
-      is never fetched.
+      <p>
+        <strong>TikTok:</strong> full links and short links (vm.tiktok.com,
+        vt.tiktok.com, tiktok.com/t/). Short links are expanded by following
+        the redirect only; the video itself is never fetched.
+      </p>
+      <p>
+        <strong>YouTube:</strong> videos, youtu.be, Shorts, live, embeds,
+        playlists, channels, clips, posts and YouTube Music. Start times are
+        kept; everything else (si, is, pp, feature, playlist info...) is removed.
+      </p>
     </div>
-  </div>
+  </main>
 
   <script>
     const form = document.getElementById('clean-form');
@@ -173,7 +217,57 @@
     const resultLabel = document.getElementById('result-label');
     const resultText = document.getElementById('result-text');
     const copyBtn = document.getElementById('copy-btn');
-    const badge = document.getElementById('badge');
+    const badges = document.getElementById('badges');
+    const notes = document.getElementById('notes');
+
+    const PLATFORM_NAMES = { tiktok: 'TikTok', youtube: 'YouTube' };
+
+    function addBadge(text, className, codeText) {
+      const badge = document.createElement('span');
+      badge.className = 'badge' + (className ? ' ' + className : '');
+      if (className) {
+        const swatch = document.createElement('span');
+        swatch.className = 'swatch';
+        badge.appendChild(swatch);
+      }
+      badge.appendChild(document.createTextNode(text));
+      if (codeText) {
+        const code = document.createElement('code');
+        code.textContent = codeText;
+        badge.appendChild(code);
+      }
+      badges.appendChild(badge);
+    }
+
+    function showError(message) {
+      resultLabel.textContent = 'Error';
+      resultText.textContent = message;
+      resultText.removeAttribute('href');
+      resultText.className = 'error-text';
+      copyBtn.hidden = true;
+      result.classList.add('show', 'error');
+    }
+
+    function showResult(data) {
+      resultLabel.textContent = 'Clean link';
+      resultText.textContent = data.clean_url;
+      if (/^https?:\/\//i.test(data.clean_url)) resultText.href = data.clean_url;
+      resultText.className = 'clean-url';
+      copyBtn.hidden = false;
+
+      addBadge(PLATFORM_NAMES[data.platform] || 'Link', data.platform);
+      if (data.resolved_redirect) addBadge('expanded from a short link');
+      const removed = data.removed || [];
+      if (removed.length) addBadge('removed ', null, removed.join(', '));
+      else addBadge('already clean, nothing to remove');
+
+      for (const note of data.notes || []) {
+        const li = document.createElement('li');
+        li.textContent = note;
+        notes.appendChild(li);
+      }
+      result.classList.add('show');
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -183,47 +277,48 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Cleaning…';
       result.classList.remove('show', 'error');
-      badge.style.display = 'none';
+      badges.replaceChildren();
+      notes.replaceChildren();
 
       try {
         const res = await fetch('/api/clean?url=' + encodeURIComponent(url));
         const data = await res.json();
-
-        if (!res.ok) {
-          resultLabel.textContent = 'Error';
-          resultText.textContent = data.error || 'Something went wrong.';
-          resultText.className = 'error-text';
-          result.classList.add('show', 'error');
-        } else {
-          resultLabel.textContent = 'Clean link';
-          resultText.textContent = data.clean_url;
-          resultText.className = 'clean-url';
-          result.classList.add('show');
-          if (data.resolved_redirect) {
-            badge.textContent = 'expanded from a short link';
-            badge.style.display = 'inline-block';
-          }
-        }
+        if (!res.ok) showError(data.error || 'Something went wrong.');
+        else showResult(data);
       } catch (err) {
-        resultLabel.textContent = 'Error';
-        resultText.textContent = 'Could not reach the server.';
-        resultText.className = 'error-text';
-        result.classList.add('show', 'error');
+        showError('Could not reach the server.');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Clean it';
       }
     });
 
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        // Clipboard API unavailable (e.g. plain-http preview): fall back.
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        area.remove();
+        return ok;
+      }
+    }
+
     copyBtn.addEventListener('click', async () => {
       const text = resultText.textContent;
       if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
+      if (await copyText(text)) {
         copyBtn.textContent = 'Copied!';
         setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
-      } catch (e) {
-        // Clipboard API unavailable (e.g. non-HTTPS context) — no-op.
       }
     });
   </script>
